@@ -10,7 +10,7 @@ function Header({ connected = false }) {
             AI SQL Query Generator
           </h1>
           <p className="mt-3 text-base text-slate-600 sm:text-lg">
-            Database connection and automatic schema discovery
+            Generate SQL from natural language using your discovered schema
           </p>
         </div>
 

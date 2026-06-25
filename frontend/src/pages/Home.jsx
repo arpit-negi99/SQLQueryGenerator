@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import DatabaseSchema from "../components/DatabaseSchema.jsx";
 import Header from "../components/Header.jsx";
+import PromptInput from "../components/PromptInput.jsx";
+import QueryResultList from "../components/QueryResultList.jsx";
 import { fetchDatabaseSchema } from "../api/schemaApi.js";
+import { generateSqlQuery } from "../api/queryApi.js";
 
 function LoadingState() {
   return (
@@ -44,6 +47,10 @@ function Home() {
   const [schema, setSchema] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [promptError, setPromptError] = useState("");
+  const [queryResult, setQueryResult] = useState(null);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     async function loadSchema() {
@@ -68,10 +75,57 @@ function Home() {
 
   const connected = Boolean(schema && !error);
 
+  const handlePromptChange = (value) => {
+    setPrompt(value);
+
+    if (promptError) {
+      setPromptError("");
+    }
+  };
+
+  const handleGenerateSql = async () => {
+    if (!prompt.trim()) {
+      setPromptError("Please enter a query request first.");
+      setQueryResult(null);
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      setPromptError("");
+      const result = await generateSqlQuery(prompt);
+      setQueryResult(result);
+    } catch (apiError) {
+      const message =
+        apiError.response?.data?.message ||
+        "Unable to generate SQL. Check that the backend, database, and AI API key are configured.";
+      setPromptError(message);
+      setQueryResult(null);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <Header connected={connected} />
+
+        <PromptInput
+          prompt={prompt}
+          error={promptError}
+          loading={generating}
+          onPromptChange={handlePromptChange}
+          onGenerateSql={handleGenerateSql}
+        />
+
+        {generating && (
+          <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm font-semibold text-indigo-700">
+            Generating SQL query...
+          </div>
+        )}
+
+        <QueryResultList result={queryResult} />
 
         {loading && <LoadingState />}
 

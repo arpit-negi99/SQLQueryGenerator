@@ -17,6 +17,8 @@ export function errorHandler(error, req, res, next) {
   res.status(statusCode).json({
     success: false,
     connected: false,
-    message: error.statusCode ? error.message : "Unable to discover schema.",
+    message: error.statusCode
+      ? error.message
+      : "Something went wrong. Please try again.",
   });
 }
