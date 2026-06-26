@@ -1,3 +1,8 @@
+import { useState } from "react";
+import { validateQueryImpact } from "../api/validationApi.js";
+import ImpactPreviewCard from "./ImpactPreviewCard.jsx";
+import ValidationStatus from "./ValidationStatus.jsx";
+
 const queryTypeClasses = {
   SELECT: "bg-emerald-100 text-emerald-700",
   INSERT: "bg-blue-100 text-blue-700",
@@ -37,8 +42,36 @@ function ValueList({ values }) {
 }
 
 function GeneratedQueryCard({ query }) {
+  const [validationResult, setValidationResult] = useState(null);
+  const [validating, setValidating] = useState(false);
+  const [validationError, setValidationError] = useState("");
   const queryType =
     query.riskLevel === "blocked" ? "BLOCKED" : query.queryType || "UNKNOWN";
+
+  const handleValidate = async () => {
+    if (!query.sql) {
+      setValidationError("This generated query is empty and cannot be validated.");
+      return;
+    }
+
+    try {
+      setValidating(true);
+      setValidationError("");
+      const result = await validateQueryImpact({
+        sql: query.sql,
+        queryType: query.queryType,
+      });
+      setValidationResult(result);
+    } catch (apiError) {
+      const message =
+        apiError.response?.data?.message ||
+        "Network error while validating query. Make sure the backend is running.";
+      setValidationError(message);
+      setValidationResult(null);
+    } finally {
+      setValidating(false);
+    }
+  };
 
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -70,8 +103,41 @@ function GeneratedQueryCard({ query }) {
       </div>
 
       <pre className="mt-4 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm leading-6 text-indigo-100">
-        <code>{query.sql || "-- Query blocked for safety."}</code>
+        <code>{query.sql || "-- No SQL was generated."}</code>
       </pre>
+
+      {query.riskLevel === "blocked" && query.sql && (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+          This query is shown for review only. It is blocked and cannot be executed.
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={handleValidate}
+          disabled={validating || !query.sql}
+          className="inline-flex w-fit items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          {validating ? "Validating..." : "Validate & Preview Impact"}
+        </button>
+
+        <ValidationStatus result={validationResult} />
+      </div>
+
+      {validating && (
+        <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm font-semibold text-indigo-700">
+          Validating query and estimating impact...
+        </div>
+      )}
+
+      {validationError && (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+          {validationError}
+        </div>
+      )}
+
+      <ImpactPreviewCard result={validationResult} />
 
       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
         <div className="rounded-lg bg-slate-50 p-3">

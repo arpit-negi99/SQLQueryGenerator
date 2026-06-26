@@ -22,9 +22,9 @@ function normalizeQuery(query, index) {
   if (!safetyResult.safe) {
     return {
       id: index + 1,
-      sql: "",
+      sql,
       explanation: safetyResult.reason,
-      queryType: "UNKNOWN",
+      queryType: validQueryTypes.includes(queryType) ? queryType : "UNKNOWN",
       tablesUsed: normalizeArray(query.tablesUsed),
       columnsUsed: normalizeArray(query.columnsUsed),
       confidence: "low",

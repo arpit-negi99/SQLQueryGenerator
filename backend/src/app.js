@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import schemaRoutes from "./routes/schema.routes.js";
 import queryRoutes from "./routes/query.routes.js";
+import validationRoutes from "./routes/validation.routes.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
@@ -26,6 +27,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/schema", schemaRoutes);
 app.use("/api/query", queryRoutes);
+app.use("/api/query", validationRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
