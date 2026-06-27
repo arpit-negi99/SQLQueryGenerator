@@ -15,6 +15,14 @@ const blockedPatterns = [
     pattern: /\bCREATE\s+DATABASE\b/i,
     reason: "CREATE DATABASE statements are not allowed.",
   },
+  {
+    pattern: /\bGRANT\b/i,
+    reason: "GRANT statements are not allowed.",
+  },
+  {
+    pattern: /\bREVOKE\b/i,
+    reason: "REVOKE statements are not allowed.",
+  },
 ];
 
 function normalizeSql(sql) {
@@ -41,6 +49,18 @@ export function checkSqlSafety(sql) {
         reason: blockedPattern.reason,
       };
     }
+  }
+
+  const statements = normalizedSql
+    .split(";")
+    .map((statement) => statement.trim())
+    .filter(Boolean);
+
+  if (statements.length > 1) {
+    return {
+      safe: false,
+      reason: "Multiple SQL statements are not allowed.",
+    };
   }
 
   if (/\bDELETE\b/i.test(normalizedSql) && !/\bWHERE\b/i.test(normalizedSql)) {

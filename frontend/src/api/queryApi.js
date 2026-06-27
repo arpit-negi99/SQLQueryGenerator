@@ -9,3 +9,8 @@ export async function generateSqlQuery(prompt) {
   const response = await api.post("/query/generate", { prompt });
   return response.data;
 }
+
+export async function executeSqlQuery(sql) {
+  const response = await api.post("/query/execute", { sql });
+  return response.data;
+}

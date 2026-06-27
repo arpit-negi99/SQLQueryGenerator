@@ -51,25 +51,30 @@ function Home() {
   const [promptError, setPromptError] = useState("");
   const [queryResult, setQueryResult] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [activePanel, setActivePanel] = useState("query");
 
-  useEffect(() => {
-    async function loadSchema() {
-      try {
+  async function loadSchema({ quiet = false } = {}) {
+    try {
+      if (!quiet) {
         setLoading(true);
-        setError("");
+      }
+      setError("");
 
-        const response = await fetchDatabaseSchema();
-        setSchema(response.data);
-      } catch (apiError) {
-        const message =
-          apiError.response?.data?.message ||
-          "Unable to reach the backend server. Make sure the backend is running.";
-        setError(message);
-      } finally {
+      const response = await fetchDatabaseSchema();
+      setSchema(response.data);
+    } catch (apiError) {
+      const message =
+        apiError.response?.data?.message ||
+        "Unable to reach the backend server. Make sure the backend is running.";
+      setError(message);
+    } finally {
+      if (!quiet) {
         setLoading(false);
       }
     }
+  }
 
+  useEffect(() => {
     loadSchema();
   }, []);
 
@@ -95,6 +100,7 @@ function Home() {
       setPromptError("");
       const result = await generateSqlQuery(prompt);
       setQueryResult(result);
+      setActivePanel("results");
     } catch (apiError) {
       const message =
         apiError.response?.data?.message ||
@@ -106,18 +112,52 @@ function Home() {
     }
   };
 
+  const handleQueryExecuted = async (executionResult) => {
+    if (executionResult?.queryType && executionResult.queryType !== "SELECT") {
+      await loadSchema({ quiet: true });
+    }
+  };
+
+  const panels = [
+    { id: "query", label: "Ask" },
+    { id: "results", label: "Results", disabled: !queryResult?.queries?.length },
+    { id: "schema", label: "Schema" },
+  ];
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <Header connected={connected} />
 
-        <PromptInput
-          prompt={prompt}
-          error={promptError}
-          loading={generating}
-          onPromptChange={handlePromptChange}
-          onGenerateSql={handleGenerateSql}
-        />
+        <nav className="sticky top-3 z-10 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur">
+          <div className="grid grid-cols-3 gap-1">
+            {panels.map((panel) => (
+              <button
+                key={panel.id}
+                type="button"
+                onClick={() => setActivePanel(panel.id)}
+                disabled={panel.disabled}
+                className={`rounded-md px-3 py-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:text-slate-300 ${
+                  activePanel === panel.id
+                    ? "bg-slate-950 text-white"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {panel.label}
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        {activePanel === "query" && (
+          <PromptInput
+            prompt={prompt}
+            error={promptError}
+            loading={generating}
+            onPromptChange={handlePromptChange}
+            onGenerateSql={handleGenerateSql}
+          />
+        )}
 
         {generating && (
           <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm font-semibold text-indigo-700">
@@ -125,18 +165,28 @@ function Home() {
           </div>
         )}
 
-        <QueryResultList result={queryResult} />
-
-        {loading && <LoadingState />}
-
-        {!loading && error && <ErrorState message={error} />}
-
-        {!loading && !error && schema?.tables?.length === 0 && (
-          <EmptyState database={schema.database} />
+        {activePanel === "results" && (
+          <QueryResultList
+            result={queryResult}
+            onBackToPrompt={() => setActivePanel("query")}
+            onQueryExecuted={handleQueryExecuted}
+          />
         )}
 
-        {!loading && !error && schema?.tables?.length > 0 && (
-          <DatabaseSchema schema={schema} />
+        {activePanel === "schema" && (
+          <>
+            {loading && <LoadingState />}
+
+            {!loading && error && <ErrorState message={error} />}
+
+            {!loading && !error && schema?.tables?.length === 0 && (
+              <EmptyState database={schema.database} />
+            )}
+
+            {!loading && !error && schema?.tables?.length > 0 && (
+              <DatabaseSchema schema={schema} />
+            )}
+          </>
         )}
       </div>
     </main>

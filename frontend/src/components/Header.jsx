@@ -4,7 +4,7 @@ function Header({ connected = false }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-indigo-600">
-            Module 2
+            DATABASE
           </p>
           <h1 className="text-3xl font-bold text-slate-950 sm:text-4xl">
             AI SQL Query Generator

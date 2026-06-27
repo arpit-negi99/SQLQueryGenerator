@@ -4,7 +4,19 @@ import { buildSqlGenerationPrompt } from "../prompts/sqlGenerationPrompt.js";
 import { parseAiJson } from "../utils/cleanAiResponse.js";
 import { checkSqlSafety } from "../utils/sqlSafetyChecker.js";
 
-const validQueryTypes = ["SELECT", "INSERT", "UPDATE", "DELETE", "UNKNOWN"];
+const validQueryTypes = [
+  "SELECT",
+  "INSERT",
+  "UPDATE",
+  "DELETE",
+  "DROP",
+  "TRUNCATE",
+  "ALTER",
+  "CREATE",
+  "GRANT",
+  "REVOKE",
+  "UNKNOWN",
+];
 const validConfidenceLevels = ["high", "medium", "low"];
 const validRiskLevels = ["low", "medium", "high", "blocked"];
 
@@ -18,18 +30,22 @@ function normalizeQuery(query, index) {
   const confidence = String(query.confidence || "low").toLowerCase();
   const riskLevel = String(query.riskLevel || "medium").toLowerCase();
   const safetyResult = checkSqlSafety(sql);
+  const normalizedRiskLevel = validRiskLevels.includes(riskLevel)
+    ? riskLevel
+    : "medium";
 
   if (!safetyResult.safe) {
     return {
       id: index + 1,
       sql,
-      explanation: safetyResult.reason,
+      explanation: `${safetyResult.reason} The SQL is shown for review only and cannot be executed.`,
       queryType: validQueryTypes.includes(queryType) ? queryType : "UNKNOWN",
       tablesUsed: normalizeArray(query.tablesUsed),
       columnsUsed: normalizeArray(query.columnsUsed),
       confidence: "low",
       riskLevel: "blocked",
       requiresConfirmation: true,
+      canExecute: false,
     };
   }
 
@@ -41,10 +57,11 @@ function normalizeQuery(query, index) {
     tablesUsed: normalizeArray(query.tablesUsed),
     columnsUsed: normalizeArray(query.columnsUsed),
     confidence: validConfidenceLevels.includes(confidence) ? confidence : "low",
-    riskLevel: validRiskLevels.includes(riskLevel) ? riskLevel : "medium",
+    riskLevel: normalizedRiskLevel,
     requiresConfirmation:
       ["INSERT", "UPDATE", "DELETE"].includes(queryType) ||
       Boolean(query.requiresConfirmation),
+    canExecute: normalizedRiskLevel !== "blocked" && query.canExecute !== false,
   };
 }
 
